@@ -6,12 +6,13 @@ import {
   ScrollRestoration,
   useLoaderData,
 } from '@remix-run/react';
-import styles from './styles/app.css';
+import tailwind from './styles/tailwind-build.css';
 import favicon from '../public/favicon.svg';
+import {Layout} from './components/Layout';
 
 export const links = () => {
   return [
-    {rel: 'stylesheet', href: styles},
+    {rel: 'stylesheet', href: tailwind},
     {
       rel: 'preconnect',
       href: 'https://cdn.shopify.com',
@@ -31,12 +32,13 @@ export const meta = () => ({
 
 export async function loader({context}) {
   const layout = await context.storefront.query(LAYOUT_QUERY);
-  return {layout};
+  const menuLinks = await context.storefront.query(COLLECTIONS_QUERY);
+  const headerAsideText = await context.storefront.query(HEADER_ASIDE_QUERY);
+  return {layout, menuLinks, headerAsideText};
 }
 
 export default function App() {
   const data = useLoaderData();
-
   const {name} = data.layout.shop;
 
   return (
@@ -46,9 +48,9 @@ export default function App() {
         <Links />
       </head>
       <body>
-        <h1>Hello, {name}</h1>
-        <p>This is a custom storefront powered by Hydrogen</p>
-        <Outlet />
+        <Layout title={name} logo={data.layout.shop.brand.logo.image}>
+          <Outlet />
+        </Layout>
         <ScrollRestoration />
         <Scripts />
       </body>
@@ -61,6 +63,43 @@ const LAYOUT_QUERY = `#graphql
     shop {
       name
       description
+      brand {
+        logo {
+          image {
+            id
+            url
+            altText
+            width
+            height
+            __typename
+            altText
+        }
+      }
+      }
     }
   }
 `;
+const COLLECTIONS_QUERY = `#graphql
+  query FeaturedCollections {
+    collections(first: 3, query: "collection_type:smart") {
+      nodes {
+        id
+        title
+        handle
+        metafield(namespace: "custom", key: "main_category") {
+          value
+        }
+      }
+    }
+  }
+`;
+
+const HEADER_ASIDE_QUERY = `#graphql
+  query headerAsideText {
+	page(id:"gid://shopify/Page/113679335761"){
+  	id
+  	metafield(namespace:"custom",key:"top_header_aside"){
+      value
+    }
+  }
+}`;
